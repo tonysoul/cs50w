@@ -1,3 +1,22 @@
 textarea {
-    min-height: 400px;
+  min-height: 400px;
+}
+
+#email-entity-view {
+  display: none;
+}
+
+.mailItem {
+  padding: 5px;
+}
+.mailItem:hover {
+  background-color: lightgray;
+  cursor: pointer;
+}
+
+.mailItem__sender {
+  width: 200px;
+}
+.mailItem__timestamp {
+  width: 200px;
 }
