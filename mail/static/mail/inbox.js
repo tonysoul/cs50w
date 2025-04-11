@@ -1,3 +1,6 @@
+// global vars
+const app = {};
+
 document.addEventListener("DOMContentLoaded", function () {
   // Use buttons to toggle between views
   document
@@ -19,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function compose_email() {
+  app.current_view = "compose";
   clean_view();
   // Show compose view and hide other views
   document.querySelector("#compose-view").style.display = "block";
@@ -36,10 +40,13 @@ function load_mailbox(mailbox) {
 
   if (mailbox === "inbox") {
     load_mails("inbox");
+    app.current_view = "inbox";
   } else if (mailbox === "sent") {
     load_mails("sent");
+    app.current_view = "sent";
   } else if (mailbox === "archive") {
     load_mails("archive");
+    app.current_view = "archive";
   }
 }
 
@@ -104,8 +111,8 @@ function load_mails(type) {
         // create str html template, it's simple
         let render_list_str = "";
         result.forEach((item) => {
-          const item_str = `<div data-id="${
-            item.id
+          const item_str = `<div data-id="${item.id}" data-read="${
+            item.read
           }" class="d-flex mailItem border-bottom ${item.read ? "gray" : ""}">
         <div class="mailItem__sender">${item.sender}</div>
         <div class="flex-fill">${item.subject}</div>
@@ -120,7 +127,9 @@ function load_mails(type) {
         document.querySelectorAll(".mailItem").forEach(function (item) {
           item.addEventListener("click", function () {
             show_email_entity(this.dataset.id);
-            mark_email_status(this.dataset.id, { read: true });
+            if (!JSON.parse(this.dataset.read)) {
+              mark_email_status(this.dataset.id, { read: true });
+            }
           });
         });
       }
@@ -132,13 +141,29 @@ function show_email_entity(id) {
   const entity_email = document.querySelector("#email-entity-view");
   entity_email.style.display = "block";
 
+  function bind_archive() {
+    const btn = document.querySelector("#email-archive-btn");
+
+    btn.addEventListener("click", async function () {
+      await mark_email_status(id, {
+        archived: JSON.parse(this.dataset.archived),
+      });
+      load_mailbox("inbox");
+    });
+  }
+
   fetch(`/emails/${id}`)
     .then((response) => response.json())
     .then((result) => {
       if (!result.error) {
+        const archive_btn = `<button data-archived="${!result.archived}" id="email-archive-btn" class="btn btn-primary btn-sm float-right">
+              ${result.archived ? "Unarchive" : "Archive"}
+            </button>`;
+
         const entity_email_str_html = `
   <div class="emailBox">
         <div class="emailBox__hd">
+            ${app.current_view === "sent" ? "" : archive_btn}
             <h4>${result.subject}</h4>
             <ul class="emailBox__ul">
                 <li>sender: ${result.sender}</li>
@@ -153,13 +178,17 @@ function show_email_entity(id) {
     </div>`;
 
         entity_email.innerHTML = entity_email_str_html;
+
+        if (app.current_view !== "sent") {
+          bind_archive();
+        }
       }
     });
 }
 
 // obj => {read: true/false, archived: true/false}
-function mark_email_status(id, obj) {
-  fetch(`/emails/${id}`, {
+async function mark_email_status(id, obj) {
+  return fetch(`/emails/${id}`, {
     method: "PUT",
     body: JSON.stringify(obj),
   }).catch((error) => {
