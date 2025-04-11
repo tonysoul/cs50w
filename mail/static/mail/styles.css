@@ -9,8 +9,11 @@ textarea {
 .mailItem {
   padding: 5px;
 }
+.mailItem.gray {
+  background-color: #c2c2c2;
+}
 .mailItem:hover {
-  background-color: lightgray;
+  background-color: #bdddff !important;
   cursor: pointer;
 }
 
@@ -19,4 +22,19 @@ textarea {
 }
 .mailItem__timestamp {
   width: 200px;
+}
+
+.emailBox {
+}
+.emailBox__hd {
+  padding: 10px;
+  background-color: antiquewhite;
+}
+.emailBox__ul {
+  margin: 0;
+}
+.emailBox__bd {
+  padding: 10px;
+}
+.emailBox__ft {
 }
