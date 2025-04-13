@@ -22,6 +22,7 @@ textarea {
 }
 .mailItem__timestamp {
   width: 200px;
+  text-align: right;
 }
 
 .emailBox {
@@ -35,6 +36,8 @@ textarea {
 }
 .emailBox__bd {
   padding: 10px;
+  white-space: pre-line;
+  font-family: "lucida Grande", Verdana, "Microsoft YaHei";
 }
 .emailBox__ft {
 }
