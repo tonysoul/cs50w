@@ -26,10 +26,10 @@
                 From: <input disabled class="form-control" value="{{ request.user.email }}">
             </div>
             <div class="form-group">
-                To: <input id="compose-recipients" class="form-control" required>
+                To: <input autocomplete="off" id="compose-recipients" class="form-control" required>
             </div>
             <div class="form-group">
-                <input class="form-control" id="compose-subject" placeholder="Subject" required>
+                <input autocomplete="off" class="form-control" id="compose-subject" placeholder="Subject" required>
             </div>
             <textarea class="form-control" id="compose-body" placeholder="Body" required></textarea>
             <input type="submit" class="btn btn-primary"/>
