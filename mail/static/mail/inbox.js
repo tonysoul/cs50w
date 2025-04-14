@@ -21,18 +21,20 @@
     load_mailbox("inbox");
 
     // bind form submint event
-    bind_send_mail();
+    bind_sent_mail();
   });
 
   function compose_email() {
     app.current_view = "compose";
     app.is_reply = false;
-    console.log(app);
     clean_view();
     // Show compose view and hide other views
     document.querySelector("#compose-view").style.display = "block";
+    const compose_recipients = document.querySelector("#compose-recipients");
+    compose_recipients.focus();
   }
 
+  // load view
   function load_mailbox(mailbox) {
     clean_view();
     // Show the mailbox and hide other views
@@ -43,31 +45,16 @@
       mailbox.charAt(0).toUpperCase() + mailbox.slice(1)
     }</h3>`;
 
-    if (mailbox === "inbox") {
-      load_mails("inbox");
-      app.current_view = "inbox";
-    } else if (mailbox === "sent") {
-      load_mails("sent");
-      app.current_view = "sent";
-    } else if (mailbox === "archive") {
-      load_mails("archive");
-      app.current_view = "archive";
-    }
+    load_mails(mailbox);
+    app.current_view = mailbox;
   }
 
-  // send mail
-  function bind_send_mail() {
+  // bind sent mail event
+  function bind_sent_mail() {
     document.querySelector("#compose-form").onsubmit = function () {
       const recipients = document.querySelector("#compose-recipients").value;
       const subject = document.querySelector("#compose-subject").value;
       let body = document.querySelector("#compose-body").value;
-
-      if (app.is_reply) {
-        const reg =
-          /^On(.)*--------------------------------------------------------/gis;
-        body = body.replace(reg, "");
-        console.log(body);
-      }
 
       fetch("/emails", {
         method: "POST",
@@ -79,11 +66,10 @@
       })
         .then((response) => response.json())
         .then((result) => {
-          console.log(result);
           if (result.error) {
             show_errors(result.error);
           } else {
-            document.querySelector("#sent").click();
+            load_mailbox("sent");
           }
         });
 
@@ -104,6 +90,8 @@
     errors.classList.add("d-none");
   }
 
+  // load mail list
+  // type: inbox, sent, archive
   function load_mails(type) {
     const views = document.querySelector("#emails-view");
     let url = "";
@@ -113,7 +101,7 @@
     } else if (type === "sent") {
       url = "/emails/sent";
     } else if (type === "archive") {
-      url = "emails/archive";
+      url = "/emails/archive";
     }
 
     fetch(url)
@@ -121,19 +109,20 @@
       .then((result) => {
         if (result.length > 0) {
           // create str html template, it's simple
-          let render_list_str = "";
+          let str_list_el = "";
           result.forEach((item) => {
-            const item_str = `<div data-id="${item.id}" data-read="${
+            const str_item = `
+            <div data-id="${item.id}" data-read="${
               item.read
             }" class="d-flex mailItem border-bottom ${item.read ? "gray" : ""}">
         <div class="mailItem__sender">${item.sender}</div>
         <div class="flex-fill">${item.subject}</div>
         <div class="mailItem__timestamp">${item.timestamp}</div>
     </div>`;
-            render_list_str += item_str;
+            str_list_el += str_item;
           });
 
-          views.insertAdjacentHTML("beforeend", render_list_str);
+          views.insertAdjacentHTML("beforeend", str_list_el);
 
           // bind click event
           document.querySelectorAll(".mailItem").forEach(function (item) {
@@ -153,6 +142,7 @@
     const entity_email = document.querySelector("#email-entity-view");
     entity_email.style.display = "block";
 
+    // bind arcihve btn click event
     function bind_archive() {
       const btn = document.querySelector("#email-archive-btn");
 
@@ -164,13 +154,13 @@
       });
     }
 
-    function bind_reply(id) {
-      const btn = document.querySelector("#reply-btn");
+    // bind reply btn click event
+    function bind_reply(result) {
+      const btn = document.querySelector("#email-reply-btn");
       btn.addEventListener("click", function () {
         compose_email();
         app.is_reply = true;
-        console.log(app);
-        reply_email(id);
+        fill_reply_form(result);
       });
     }
 
@@ -178,7 +168,6 @@
       .then((response) => response.json())
       .then((result) => {
         if (!result.error) {
-          console.log(result);
           const archive_btn = `<button data-archived="${
             result.archived
           }" id="email-archive-btn" class="btn btn-primary btn-sm float-right mr-1">
@@ -188,7 +177,7 @@
           const entity_email_str_html = `
 <div class="emailBox">
     <div class="emailBox__hd">
-        <button id="reply-btn" class="btn btn-info btn-sm float-right">Reply</button>
+        <button id="email-reply-btn" class="btn btn-info btn-sm float-right">Reply</button>
         ${app.current_view === "sent" ? "" : archive_btn}
         <h4>${result.subject}</h4>
         <ul class="emailBox__ul">
@@ -200,12 +189,11 @@
     <div class="emailBox__bd">
         ${result.body}
     </div>
-    <div class="emailBox__ft"></div>
 </div>`;
 
           entity_email.innerHTML = entity_email_str_html;
 
-          bind_reply(result.id);
+          bind_reply(result);
 
           if (app.current_view !== "sent") {
             bind_archive();
@@ -214,33 +202,29 @@
       });
   }
 
-  function reply_email(id) {
-    fetch(`/emails/${id}`)
-      .then((response) => response.json())
-      .then((result) => {
-        if (!result.error) {
-          let { sender, subject, recipients, body, timestamp } = result;
+  // result: email entity
+  function fill_reply_form(result) {
+    let { sender, subject, recipients, body, timestamp } = result;
 
-          if (!subject.startsWith("Re: ")) {
-            subject = "Re: " + subject;
-          }
+    if (!subject.startsWith("Re: ")) {
+      subject = "Re: " + subject;
+    }
 
-          body = `\n\n\n---- Original ----\nOn ${timestamp} ${sender} wrote:\n${body}`;
+    body = `\n\n\n---- Original ----\nOn ${timestamp} ${sender} wrote:\n${body}`;
 
-          // body = `<br><br><br><div class="ref">---- Original ----</div>`;
+    // reply yourself
+    if (sender === current_user) {
+      document.querySelector("#compose-recipients").value =
+        recipients.join(", ");
+    } else {
+      document.querySelector("#compose-recipients").value = sender;
+    }
 
-          // reply yourself
-          if (sender === current_user) {
-            document.querySelector("#compose-recipients").value =
-              recipients.join(", ");
-          } else {
-            document.querySelector("#compose-recipients").value = sender;
-          }
-
-          document.querySelector("#compose-subject").value = subject;
-          document.querySelector("#compose-body").value = body;
-        }
-      });
+    document.querySelector("#compose-subject").value = subject;
+    const compose_body = document.querySelector("#compose-body");
+    compose_body.value = body;
+    compose_body.focus();
+    compose_body.setSelectionRange(0, 0);
   }
 
   // obj => {read: true/false, archived: true/false}
@@ -249,7 +233,6 @@
       method: "PUT",
       body: JSON.stringify(obj),
     }).catch((error) => {
-      console.error(error);
       show_errors(error);
     });
   }
